@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Turbojet & Turbofan Cycle Analysis — Full Technical Report | Skyler Cao</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  body { font-family: 'Inter', sans-serif; background-color: #05070a; color: #d4d4d8; }
+  .font-mono { font-family: 'JetBrains Mono', monospace; }
+  pre { background: #10151d; border: 1px solid #222a37; border-radius: 8px; padding: 1rem; overflow-x: auto; font-size: 0.75rem; line-height: 1.5; }
+  code { font-family: 'JetBrains Mono', monospace; }
+  table { width: 100%; border-collapse: collapse; margin: 1rem 0; }
+  th, td { border: 1px solid #222a37; padding: 0.5rem 0.75rem; text-align: left; font-size: 0.875rem; }
+  th { background: #10151d; color: #34d399; }
+</style>
+</head>
+<body class="antialiased">
+
+<div class="max-w-4xl mx-auto px-6 py-16">
+
+  <a href="index.html#projects" class="font-mono text-sm text-accent-emerald text-emerald-400 hover:underline">← Back to Projects</a>
+
+  <p class="font-mono text-indigo-400 text-sm tracking-widest mt-8 mb-3">FULL TECHNICAL REPORT</p>
+  <h1 class="text-3xl md:text-4xl font-bold text-white mb-2">Turbojet &amp; Turbofan Cycle Analysis</h1>
+  <p class="text-zinc-500 text-sm mb-10">ENGRMAE 112 Propulsion — Prof. Liu · Skyler Cao · November 7, 2026</p>
+
+  <h2 class="text-xl font-bold text-white mt-10 mb-3">Abstract</h2>
+  <p class="leading-relaxed text-zinc-400">
+    This report presents an on-design cycle analysis of a single-spool turbojet and a bypass turbofan engine with
+    non-ideal components. A MATLAB program was written to step through the engine stations: diffuser, compressor,
+    burner, turbine, and nozzle, plus the fan and fan nozzle for the turbofan. Using the component efficiencies and
+    specific heat ratios from Phillip Hill's <em>Thermodynamics and Mechanics of Propulsion</em>, the program computes
+    specific thrust, thrust specific fuel consumption (TSFC), and the thermal, propulsive, and overall efficiencies as
+    functions of compressor pressure ratio for turbine inlet temperatures of 1500, 1600, and 1700 K at four flight
+    conditions (sea level static, Mach 0.85, Mach 2, and Mach 3). At the same core airflow, a bypass ratio 10 turbofan
+    produces about 3.3× the takeoff thrust of the turbojet, because it accelerates a much larger mass flow to a lower
+    velocity.
+  </p>
+
+  <h2 class="text-xl font-bold text-white mt-10 mb-3">1. Introduction</h2>
+  <p class="leading-relaxed text-zinc-400">
+    The objectives were to compare the takeoff thrust of a turbojet and a turbofan with the same core airflow, and to
+    write a program carrying out the on-design analysis of each with real component efficiencies, reproducing the
+    corresponding textbook figures. In a turbojet, all of the air passes through the compressor, burner, and turbine,
+    and thrust comes from the high-velocity core jet. A turbofan adds a fan that accelerates an additional stream of
+    air around the core; the ratio of bypass mass flow to core mass flow is the bypass ratio β.
+  </p>
+
+  <h2 class="text-xl font-bold text-white mt-10 mb-3">1.2 Assumptions</h2>
+  <ul class="list-disc list-inside space-y-1 text-zinc-400">
+    <li>Working fluid is a perfect gas with constant specific heat; γ varies between components per Tables 5.1/5.2. R = 287 J/(kg·K)</li>
+    <li>Component losses represented by adiabatic efficiencies; no total pressure loss in the burner (p04 = p03), burner efficiency η_b = 1</li>
+    <li>Mechanical shaft efficiency is 1 — turbine work equals compressor work (plus fan work for the turbofan)</li>
+    <li>Nozzles are fully expanded (exit static pressure equals ambient pressure)</li>
+    <li>Fuel–air ratio is small, but fuel mass is retained in turbine work balance and thrust equation</li>
+  </ul>
+
+  <h2 class="text-xl font-bold text-white mt-10 mb-3">2. Turbojet — Component Data &amp; Flight Conditions</h2>
+  <table>
+    <tr><th>Component</th><th>Adiabatic Efficiency</th><th>Avg. Specific Heat Ratio</th></tr>
+    <tr><td>Diffuser</td><td>η_d = 0.97</td><td>1.40</td></tr>
+    <tr><td>Compressor</td><td>η_c = 0.85</td><td>1.37</td></tr>
+    <tr><td>Burner</td><td>η_b = 1.00</td><td>1.35</td></tr>
+    <tr><td>Turbine</td><td>η_t = 0.90</td><td>1.33</td></tr>
+    <tr><td>Nozzle</td><td>η_n = 0.98</td><td>1.36</td></tr>
+  </table>
+  <p class="text-sm text-zinc-500 mb-4">Fuel Heating Value: 45,000 kJ/kg</p>
+
+  <table>
+    <tr><th>Flight Altitude (Mach No.)</th><th>Ambient Pressure (Pa)</th><th>Ambient Temp (K)</th></tr>
+    <tr><td>Sea Level (0)</td><td>101,300</td><td>288.2</td></tr>
+    <tr><td>40,000 ft (0.85)</td><td>18,750</td><td>216.7</td></tr>
+    <tr><td>60,000 ft (2.0)</td><td>7,170</td><td>216.7</td></tr>
+    <tr><td>80,000 ft (3.0)</td><td>2,097</td><td>216.7</td></tr>
+  </table>
+
+  <h2 class="text-xl font-bold text-white mt-10 mb-3">3. Turbofan — Additional Component Data</h2>
+  <table>
+    <tr><th>Component</th><th>Efficiency</th><th>Specific Heat Ratio</th></tr>
+    <tr><td>Fan</td><td>η_f = 0.85</td><td>1.40</td></tr>
+    <tr><td>Fan Nozzle</td><td>η_fn = 0.97</td><td>1.40</td></tr>
+  </table>
+  <p class="text-sm text-zinc-500 mb-4">Fan Pressure Ratio P_rf = 1.5 · Bypass Ratio β = 5 (for Figs. 5.29, 5.30, 5.32)</p>
+
+  <h2 class="text-xl font-bold text-white mt-10 mb-3">4. Problem 1 — Takeoff Thrust Comparison</h2>
+  <p class="leading-relaxed text-zinc-400 mb-4">
+    Using ideal components (γ = 1.4, M = 0, f ≪ 1), P_rc = 12, T04 = 1500 K, T_a = 288.2 K, β = 10, and P_rf = 1.6:
+  </p>
+  <table>
+    <tr><th></th><th>Turbojet</th><th>Turbofan (β = 10)</th></tr>
+    <tr><td>τ_t</td><td>0.801</td><td>0.525</td></tr>
+    <tr><td>u_e / a_a</td><td>2.84</td><td>0.94</td></tr>
+    <tr><td>u_fe / a_a</td><td>—</td><td>0.85</td></tr>
+    <tr><td>τ / (ṁ_a a_a)</td><td>2.84</td><td>9.41</td></tr>
+  </table>
+  <p class="leading-relaxed text-zinc-400">
+    Resulting thrust ratio at the same core air flow:
+    <span class="text-emerald-400 font-mono font-bold">τ_turbofan / τ_turbojet ≈ 3.3</span>.
+    This ratio does not depend on T_a because every velocity scales with a_a.
+  </p>
+
+  <h2 class="text-xl font-bold text-white mt-10 mb-3">5. Key Results &amp; Interpretation</h2>
+  <ul class="list-disc list-inside space-y-2 text-zinc-400 leading-relaxed">
+    <li><strong class="text-white">Static turbojet:</strong> Specific thrust rises with compressor pressure ratio to a broad maximum (~1 kN·s/kg), then falls at very high pressure ratios as the turbine takes a larger share of available energy.</li>
+    <li><strong class="text-white">Supersonic cruise (M=2, M=3):</strong> The usable compressor pressure ratio range collapses rapidly with Mach number — roughly 60–100 at M=2, dropping to just 15–25 at M=3 — because ram temperature rise already does much of the compression work.</li>
+    <li><strong class="text-white">Turbofan thrust:</strong> Static specific thrust per unit core airflow is about 2× the turbojet's, with roughly half the fuel consumption — the direct bypass effect quantified in Problem 1.</li>
+    <li><strong class="text-white">Efficiencies:</strong> Thermal efficiency rises with pressure ratio before leveling off; propulsive efficiency initially falls then recovers at higher pressure ratios. The turbofan's propulsive efficiency is substantially higher than the turbojet's at every condition, since its mean jet velocity sits much closer to flight speed.</li>
+  </ul>
+
+  <h2 class="text-xl font-bold text-white mt-10 mb-3">6. Conclusions</h2>
+  <p class="leading-relaxed text-zinc-400">
+    The program successfully reproduces the trends of all 10 referenced textbook figures (5.19–5.22, 5.29–5.34). Specific
+    thrust has an optimum compressor pressure ratio at subsonic speed that shifts with T_max, and the useful pressure
+    ratio range shrinks rapidly with flight Mach number. Raising T_max increases specific thrust and extends the usable
+    pressure ratio range. Adding bypass flow raises thrust per unit core airflow and propulsive efficiency while lowering
+    fuel consumption — for Problem 1, the β=10 turbofan delivers about 3.3× the turbojet's takeoff thrust at the same
+    core airflow.
+  </p>
+
+  <h2 class="text-xl font-bold text-white mt-10 mb-3">Appendix A — MATLAB Source Code</h2>
+  <p class="text-sm text-zinc-500 mb-3">Full turbojet() and turbofan() cycle functions, plus plotting helpers, as submitted for MAE 112 HW5 Problem 2.</p>
+  <pre><code>%% MAE 112 HW5 - Problem 2
+% Skyler Cao
+% ENGRMAE 112 Propulsion
+% Professor Liu
+clear; clc; close all;
+
+%% ---------------- Component data ----------------
+R = 287;
+% Turbojet (Table 5.1)
+eta_D = 0.97; gamma_d = 1.4;
+eta_C = 0.85; gamma_C = 1.37;
+eta_B = 1;    gamma_B = 1.35;
+eta_T = 0.9;  gamma_T = 1.33;
+eta_N = 0.98; gamma_N = 1.36;
+Q_Heating = 45000;
+% Fan (Table 5.2)
+eta_F = 0.85; gamma_f = 1.4;
+eta_Fn = 0.97; gamma_Fn = 1.4;
+P_rf = 1.5;
+B = 5;
+
+%% Flight conditions
+Ma_SL = 0;    Pa_SL = 101300; Ta_SL = 288.2;
+Ma_40 = 0.85; Pa_40 = 18750;  Ta_40 = 216.7;
+Ma_60 = 2.0;  Pa_60 = 7170;   Ta_60 = 216.7;
+Ma_80 = 3;    Pa_80 = 2097;   Ta_80 = 216.7;
+
+Ma_all = [Ma_SL Ma_40 Ma_60 Ma_80];
+Pa_all = [Pa_SL Pa_40 Pa_60 Pa_80];
+Ta_all = [Ta_SL Ta_40 Ta_60 Ta_80];
+
+E = struct('R',R,'Q',Q_Heating*1e3, ...
+    'eta_D',eta_D,'gamma_d',gamma_d,'eta_C',eta_C,'gamma_C',gamma_C, ...
+    'eta_B',eta_B,'gamma_B',gamma_B,'eta_T',eta_T,'gamma_T',gamma_T, ...
+    'eta_N',eta_N,'gamma_N',gamma_N,'eta_F',eta_F,'gamma_f',gamma_f, ...
+    'eta_Fn',eta_Fn,'gamma_Fn',gamma_Fn);
+
+P_rc = logspace(log10(2), log10(100), 300);
+Tmax = [1500 1600 1700];
+
+%% ============ Figs 5.19-5.22: turbojet thrust and fuel consumption ============
+for i = 1:4
+    O = cell(1,numel(Tmax));
+    for k = 1:numel(Tmax)
+        O{k} = turbojet(Ma_all(i), P_rc, Tmax(k), Pa_all(i), Ta_all(i), E);
+    end
+    plot_dual(P_rc, O, Tmax, sprintf('Fig 5.%d',18+i), ...
+        sprintf('Turbojet thrust and fuel consumption (M = %g)', Ma_all(i)));
+end
+
+%% ============ Figs 5.29-5.30: turbofan thrust and fuel consumption ============
+fig_id = [29 30]; idx = [1 2];
+for n = 1:2
+    i = idx(n);
+    O = cell(1,numel(Tmax));
+    for k = 1:numel(Tmax)
+        O{k} = turbofan(Ma_all(i), P_rc, P_rf, B, Tmax(k), Pa_all(i), Ta_all(i), E);
+    end
+    plot_dual(P_rc, O, Tmax, sprintf('Fig 5.%d', fig_id(n)), ...
+        sprintf('Turbofan: M = %g, \\beta = %d, P_{rf} = %.1f', Ma_all(i), B, P_rf));
+end
+
+%% ============ Figs 5.31-5.34: efficiencies (Tmax = 1700 K) ============
+T_eff = 1700;
+o = turbojet(Ma_40, P_rc, T_eff, Pa_40, Ta_40, E);
+plot_eff(P_rc, o, 'Fig 5.31', sprintf('Turbojet: M = %.2f, \\beta = 0, T_{max} = %d K', Ma_40, T_eff));
+o = turbofan(Ma_40, P_rc, P_rf, B, T_eff, Pa_40, Ta_40, E);
+plot_eff(P_rc, o, 'Fig 5.32', sprintf('Turbofan: M = %.2f, \\beta = %d, T_{max} = %d K, P_{rf} = %.1f', Ma_40, B, T_eff, P_rf));
+o = turbojet(Ma_60, P_rc, T_eff, Pa_60, Ta_60, E);
+plot_eff(P_rc, o, 'Fig 5.33', sprintf('Turbojet: M = %g, \\beta = 0, T_{max} = %d K', Ma_60, T_eff));
+o = turbojet(Ma_80, P_rc, T_eff, Pa_80, Ta_80, E);
+plot_eff(P_rc, o, 'Fig 5.34', sprintf('Turbojet: M = %g, \\beta = 0, T_{max} = %d K', Ma_80, T_eff));
+
+%% ---------------- Problem 1 check (ideal components, takeoff) ----------------
+Eid = E;
+Eid.eta_D=1; Eid.eta_C=1; Eid.eta_B=1; Eid.eta_T=1; Eid.eta_N=1; Eid.eta_F=1; Eid.eta_Fn=1;
+Eid.gamma_d=1.4; Eid.gamma_C=1.4; Eid.gamma_B=1.4; Eid.gamma_T=1.4;
+Eid.gamma_N=1.4; Eid.gamma_f=1.4; Eid.gamma_Fn=1.4;
+tj = turbojet(Ma_SL, 12, 1500, Pa_SL, Ta_SL, Eid);
+tf = turbofan(Ma_SL, 12, 1.6, 10, 1500, Pa_SL, Ta_SL, Eid);
+fprintf('Takeoff thrust ratio (turbofan/turbojet), same core airflow = %.3f\n', tf.Fs/tj.Fs);
+
+%% ======================== LOCAL FUNCTIONS ========================
+function o = turbojet(Ma, P_rc, T04, Pa, Ta, E)
+    R = E.R;
+    cp_C = E.gamma_C*R/(E.gamma_C-1); cp_B = E.gamma_B*R/(E.gamma_B-1);
+    cp_T = E.gamma_T*R/(E.gamma_T-1); cp_N = E.gamma_N*R/(E.gamma_N-1);
+    V0 = Ma*sqrt(E.gamma_d*R*Ta);
+    T02 = Ta*(1 + (E.gamma_d-1)/2*Ma.^2);
+    P02 = Pa*(1 + E.eta_D*(E.gamma_d-1)/2*Ma.^2).^(E.gamma_d/(E.gamma_d-1));
+    T03 = T02.*(1 + (P_rc.^((E.gamma_C-1)/E.gamma_C) - 1)/E.eta_C);
+    P03 = P_rc.*P02;
+    P04 = P03;
+    f = (cp_B*T04 - cp_C*T03)./(E.eta_B*E.Q - cp_B*T04);
+    T05 = T04 - cp_C*(T03 - T02)./((1+f)*cp_T);
+    P05 = P04.*(1 - (1 - T05/T04)/E.eta_T).^(E.gamma_T/(E.gamma_T-1));
+    T9 = T05.*(1 - E.eta_N*(1 - (Pa./P05).^((E.gamma_N-1)/E.gamma_N)));
+    V9 = sqrt(2*cp_N.*(T05 - T9));
+    Fs = (1+f).*V9 - V0;
+    S = f./Fs;
+    dKE = ((1+f).*V9.^2 - V0.^2)/2;
+    etaT = dKE./(f*E.Q); etaP = Fs.*V0./dKE; etaO = etaT.*etaP;
+    bad = imag(V9)~=0 | imag(P05)~=0 | imag(T9)~=0 | imag(Fs)~=0 | ...
+          f<=0 | P05<=Pa | Fs<=0 | T05>=T04;
+    o = pack(Fs,S,f,etaT,etaP,etaO,bad);
+end
+
+function o = turbofan(Ma, P_rc, P_rf, B, T04, Pa, Ta, E)
+    R = E.R;
+    cp_C = E.gamma_C*R/(E.gamma_C-1); cp_B = E.gamma_B*R/(E.gamma_B-1);
+    cp_T = E.gamma_T*R/(E.gamma_T-1); cp_N = E.gamma_N*R/(E.gamma_N-1);
+    cp_F = E.gamma_f*R/(E.gamma_f-1); cp_Fn = E.gamma_Fn*R/(E.gamma_Fn-1);
+    V0 = Ma*sqrt(E.gamma_d*R*Ta);
+    T02 = Ta*(1 + (E.gamma_d-1)/2*Ma.^2);
+    P02 = Pa*(1 + E.eta_D*(E.gamma_d-1)/2*Ma.^2).^(E.gamma_d/(E.gamma_d-1));
+    T013 = T02.*(1 + (P_rf.^((E.gamma_f-1)/E.gamma_f) - 1)/E.eta_F);
+    P013 = P_rf.*P02;
+    T03 = T02.*(1 + (P_rc.^((E.gamma_C-1)/E.gamma_C) - 1)/E.eta_C);
+    P03 = P_rc.*P02;
+    P04 = P03;
+    f = (cp_B*T04 - cp_C*T03)./(E.eta_B*E.Q - cp_B*T04);
+    T05 = T04 - (cp_C*(T03-T02) + B.*cp_F.*(T013-T02))./((1+f)*cp_T);
+    P05 = P04.*(1 - (1 - T05/T04)/E.eta_T).^(E.gamma_T/(E.gamma_T-1));
+    T9 = T05.*(1 - E.eta_N*(1 - (Pa./P05).^((E.gamma_N-1)/E.gamma_N)));
+    V9 = sqrt(2*cp_N.*(T05 - T9));
+    T19 = T013.*(1 - E.eta_Fn*(1 - (Pa./P013).^((E.gamma_Fn-1)/E.gamma_Fn)));
+    V19 = sqrt(2*cp_Fn.*(T013 - T19));
+    Fs = (1+f).*V9 + B.*V19 - (1+B)*V0;
+    S = f./Fs;
+    dKE = ((1+f).*V9.^2 + B.*V19.^2 - (1+B)*V0.^2)/2;
+    etaT = dKE./(f*E.Q); etaP = Fs.*V0./dKE; etaO = etaT.*etaP;
+    bad = imag(V9)~=0 | imag(P05)~=0 | imag(T9)~=0 | imag(Fs)~=0 | ...
+          f<=0 | P05<=Pa | Fs<=0 | T05>=T04;
+    o = pack(Fs,S,f,etaT,etaP,etaO,bad);
+end
+
+function o = pack(Fs,S,f,etaT,etaP,etaO,bad)
+    f = f.*ones(size(Fs));
+    bad = bad | isnan(Fs);
+    Fs(bad)=NaN; S(bad)=NaN; f(bad)=NaN; etaT(bad)=NaN; etaP(bad)=NaN; etaO(bad)=NaN;
+    o.Fs = real(Fs); o.S = real(S); o.f = real(f);
+    o.etaT = real(etaT); o.etaP = real(etaP); o.etaO = real(etaO);
+end</code></pre>
+
+  <a href="index.html#projects" class="inline-block mt-12 font-mono text-sm text-emerald-400 hover:underline">← Back to Projects</a>
+</div>
+
+</body>
+</html>
