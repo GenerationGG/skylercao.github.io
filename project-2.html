@@ -1,1 +1,285 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Interplanetary Trajectory Design & Mission Analysis — Full Technical Report | Skyler Cao</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  body { font-family: 'Inter', sans-serif; background-color: #05070a; color: #d4d4d8; }
+  .font-mono { font-family: 'JetBrains Mono', monospace; }
+  pre { background: #10151d; border: 1px solid #222a37; border-radius: 8px; padding: 1rem; overflow-x: auto; font-size: 0.75rem; line-height: 1.5; }
+  code { font-family: 'JetBrains Mono', monospace; }
+  table { width: 100%; border-collapse: collapse; margin: 1rem 0; }
+  th, td { border: 1px solid #222a37; padding: 0.5rem 0.75rem; text-align: left; font-size: 0.875rem; }
+  th { background: #10151d; color: #818cf8; }
+</style>
+</head>
+<body class="antialiased">
 
+<div class="max-w-4xl mx-auto px-6 py-16">
+
+  <a href="index.html#projects" class="font-mono text-sm text-indigo-400 hover:underline">← Back to Projects</a>
+
+  <p class="font-mono text-indigo-400 text-sm tracking-widest mt-8 mb-3">FULL TECHNICAL REPORT</p>
+  <h1 class="text-3xl md:text-4xl font-bold text-white mb-2">Preliminary Mission Analysis for a Transfer from Earth to Near-Earth Object 65803 Didymos</h1>
+  <p class="text-zinc-500 text-sm mb-10">MAE 146: Astronautics — Project, Problem 4 · Skyler Cao, University of California, Irvine · December 6, 2025</p>
+
+
+  <a href="MissionAnalysis-SkylerCao.pdf" download class="inline-flex items-center gap-2 border border-accent-flame/60 text-accent-flame font-semibold px-8 py-4 rounded-md hover:bg-accent-flame hover:text-base-950 transition-all text-lg">
+        <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2M7 10l5 5 5-5M12 15V3" /></svg>
+        Download Full Report
+      </a>
+  
+  <h2 class="text-xl font-bold text-white mt-10 mb-3">Abstract</h2>
+  <p class="leading-relaxed text-zinc-400">
+    This report presents a preliminary mission analysis for a spacecraft transfer from Earth to the near-Earth
+    asteroid 65803 Didymos under restricted two-body dynamics. Heliocentric states of Earth and Didymos are
+    propagated from Keplerian elements using an in-house Kepler propagator, and impulsive transfers are computed
+    by solving Lambert's problem with universal variables under a zero-sphere-of-influence assumption. A reference
+    transfer departing at t_ref + 12 days and arriving at t_ref + 412 days requires a total ΔV of
+    <span class="text-white font-medium">20.0300 km/s</span>. A porkchop plot over a 1000-day window with 5-day
+    resolution shows that substantially cheaper prograde transfers exist; the lowest-cost solution found departs at
+    t_ref + 600 days and arrives at t_ref + 1000 days with a total ΔV of
+    <span class="text-emerald-400 font-medium">7.8600 km/s</span>, a reduction of roughly
+    <span class="text-emerald-400 font-medium">61%</span> relative to the reference case.
+  </p>
+
+  <h2 class="text-xl font-bold text-white mt-10 mb-3">1. Introduction</h2>
+  <p class="leading-relaxed text-zinc-400 mb-4">
+    Near-Earth objects (NEOs) are attractive targets for science, planetary defense, and resource-utilization
+    missions. Didymos, the primary of the binary system targeted by the DART and Hera missions, has a moderately
+    eccentric (e = 0.384) and inclined (i = 3.41°) orbit that crosses the region between Earth and Mars. Because its
+    orbit differs substantially from Earth's, the cost of a rendezvous varies strongly with departure and arrival
+    epochs, making a trade study over the launch window essential.
+  </p>
+  <p class="leading-relaxed text-zinc-400 mb-2">The objectives of this analysis are to:</p>
+  <ol class="list-decimal list-inside space-y-1 text-zinc-400">
+    <li>Determine the heliocentric position and velocity of Earth and Didymos at specified epochs</li>
+    <li>Compute and visualize an Earth–Didymos transfer for a prescribed departure and arrival date</li>
+    <li>Generate a porkchop plot of total ΔV over a 1000-day window</li>
+    <li>Identify and plot a minimum-ΔV transfer from the porkchop plot</li>
+  </ol>
+
+  <h2 class="text-xl font-bold text-white mt-10 mb-3">2. Methodology</h2>
+
+  <h3 class="text-lg font-semibold text-white mt-6 mb-2">2.1 Problem Data</h3>
+  <p class="text-sm text-zinc-500 mb-2">1 AU = 149.6×10⁶ km, μ☉ = 1.32712×10¹¹ km³/s², 1 day = 86400 s</p>
+  <table>
+    <tr><th>Element</th><th>Earth</th><th>Didymos</th></tr>
+    <tr><td>a (AU)</td><td>1.00000011</td><td>1.6442</td></tr>
+    <tr><td>e</td><td>0.016710212</td><td>0.38385</td></tr>
+    <tr><td>i (deg)</td><td>0.00005</td><td>3.4079</td></tr>
+    <tr><td>Ω (deg)</td><td>−11.26064</td><td>73.196</td></tr>
+    <tr><td>ω (deg)</td><td>102.94719</td><td>319.321</td></tr>
+    <tr><td>θ(t_ref) (deg)</td><td>100.46435</td><td>195.0</td></tr>
+  </table>
+
+  <h3 class="text-lg font-semibold text-white mt-6 mb-2">2.2 Orbit Propagation</h3>
+  <p class="leading-relaxed text-zinc-400">
+    States are propagated analytically along Keplerian arcs. The initial true anomaly is converted to eccentric
+    anomaly E via tan(E/2) = √[(1−e)/(1+e)]·tan(θ/2), then to mean anomaly via Kepler's equation M = E − e·sin E. The
+    mean anomaly is advanced by M(t) = M₀ + √(μ/a³)·Δt, and the inverse problem M → E → θ is solved with a
+    Newton–Raphson iteration (tolerance 10⁻¹²). The resulting elements are converted to inertial Cartesian state with
+    the perifocal-to-inertial rotation R₃(−Ω)R₁(−i)R₃(−ω).
+  </p>
+
+  <h3 class="text-lg font-semibold text-white mt-6 mb-2">2.3 Lambert's Problem</h3>
+  <p class="leading-relaxed text-zinc-400">
+    Transfers are computed with the universal-variable formulation of Lambert's problem. With Δν the transfer angle
+    (prograde), A = sin Δν · √[r₁r₂/(1−cos Δν)], and y(z) = r₁ + r₂ + A[zS(z)−1]/√C(z). The time of flight is matched
+    by finding the root z of F(z) = (1/√μ)[(y/C)^(3/2)·S + A√y] − Δt = 0, where C(z) and S(z) are the Stumpff
+    functions. A Newton iteration safeguarded by bisection is used with tolerance ε = 10⁻⁸. The Lagrange coefficients
+    f = 1 − y/r₁, g = A√(y/μ), ġ = 1 − y/r₂ give the terminal velocities v₁ = (r₂ − f·r₁)/g and v₂ = (ġ·r₂ − r₁)/g.
+  </p>
+
+  <h3 class="text-lg font-semibold text-white mt-6 mb-2">2.4 Delta-V Model</h3>
+  <p class="leading-relaxed text-zinc-400">
+    Assuming a zero sphere of influence at both bodies, the total impulsive cost is
+    ΔV = ‖v₁ − v_E(t₀)‖₂ + ‖v₂ − v_D(t_f)‖₂.
+  </p>
+
+  <h3 class="text-lg font-semibold text-white mt-6 mb-2">2.5 Porkchop Grid</h3>
+  <p class="leading-relaxed text-zinc-400">
+    Departure and arrival days t₀, t_f ∈ [0, 1000] were sampled at 5-day intervals (201×201 grid). Body states were
+    precomputed once per grid time, and Lambert's problem was solved for every pair with t_f − t₀ > 100 days
+    (prograde only). Cases where the solver failed or returned a non-finite ΔV were left blank.
+  </p>
+
+  <h2 class="text-xl font-bold text-white mt-10 mb-3">3. Results</h2>
+
+  <h3 class="text-lg font-semibold text-white mt-6 mb-2">3.1 Earth State at t_ref + 12 days</h3>
+  <p class="font-mono text-sm text-zinc-400 leading-relaxed">
+    r_E = [−1.376321×10⁸, −6.091012×10⁷, −7.559×10¹]ᵗ km<br/>
+    v_E = [11.557797, −27.254849, −2.14×10⁻⁵]ᵗ km/s
+  </p>
+
+  <h3 class="text-lg font-semibold text-white mt-6 mb-2">3.2 Didymos State at t_ref + 412 days</h3>
+  <p class="font-mono text-sm text-zinc-400 leading-relaxed">
+    r_D = [−9.335285×10⁷, 1.799321×10⁸, 8.419365×10⁶]ᵗ km<br/>
+    v_D = [−27.465987, −3.475294, 1.505911]ᵗ km/s
+  </p>
+
+  <h3 class="text-lg font-semibold text-white mt-6 mb-2">3.3 Reference Transfer (t₀ = t_ref + 12d, t_f = t_ref + 412d)</h3>
+  <p class="leading-relaxed text-zinc-400 mb-3">
+    For a time of flight of 400 days, the Lambert solution yields v₁ = [16.4780, −27.9105, −1.3396]ᵗ km/s and
+    v₂ = [−18.8819, −15.5068, −0.2721]ᵗ km/s. The Lambert residual was below 10⁻⁶ s.
+  </p>
+  <table>
+    <tr><th>Maneuver</th><th>ΔV (km/s)</th></tr>
+    <tr><td>Earth departure</td><td>5.1413</td></tr>
+    <tr><td>Didymos arrival</td><td>14.8864</td></tr>
+    <tr><td><strong class="text-white">Total</strong></td><td><strong class="text-white">20.0277</strong></td></tr>
+  </table>
+  <p class="leading-relaxed text-zinc-400">
+    The arrival burn dominates. Didymos is at r ≈ 2.0 AU when the spacecraft arrives and moves in a very different
+    direction than the transfer arc, which makes this timing poor.
+  </p>
+
+  <h3 class="text-lg font-semibold text-white mt-6 mb-2">3.4 Porkchop Plot</h3>
+  <p class="leading-relaxed text-zinc-400">
+    The total ΔV (clipped at 25.0000 km/s) was computed as a function of departure and arrival day. The cost is
+    strongly periodic in departure date, reflecting the synodic relationship between Earth and Didymos, and the
+    reference transfer lies in a high-cost region. The grid-wide minimum occurs at t₀ = 600 d and t_f = 1000 d with
+    ΔV = 7.86 km/s. An "island" structure of cheap transfers is visible near the lower-right of the feasible region.
+  </p>
+
+  <h3 class="text-lg font-semibold text-white mt-6 mb-2">3.5 Minimum-ΔV Transfer</h3>
+  <p class="font-mono text-sm text-zinc-400 leading-relaxed mb-3">
+    t₀ = t_ref + 600 d, t_f = t_ref + 1000 d, TOF = 400 d<br/>
+    v₁ = [−29.1318, 15.9409, 1.7637]ᵗ km/s, v₂ = [15.2961, 19.9151, −0.1894]ᵗ km/s<br/>
+    <span class="text-emerald-400 font-bold">ΔV_total = 7.8598 km/s</span>
+  </p>
+  <p class="leading-relaxed text-zinc-400">
+    Other local minima exist, for example near (t₀, t_f) = (200, 970) d with ΔV ≈ 7.96 km/s, which is nearly as
+    efficient and is not constrained by the edge of the search window.
+  </p>
+
+  <h2 class="text-xl font-bold text-white mt-10 mb-3">4. Discussion</h2>
+  <p class="leading-relaxed text-zinc-400 mb-4">
+    Compared with the reference case, the minimum-cost transfer cuts the total ΔV from 20.03 to 7.86 km/s, and its
+    timing aligns the spacecraft's arrival velocity much more closely with Didymos's heliocentric velocity. Several
+    caveats apply:
+  </p>
+  <ul class="list-disc list-inside space-y-2 text-zinc-400 leading-relaxed">
+    <li>The global minimum lies on the t_f = 1000 d boundary of the search window, so a longer window could reveal slightly better solutions</li>
+    <li>The zero-sphere-of-influence model treats ΔV_Earth as the departure hyperbolic excess change; a real mission would add the cost of escaping Earth's gravity well from a parking orbit, and the arrival ΔV would involve a rendezvous with Didymos's very weak gravity field</li>
+    <li>The model assumes unperturbed two-body motion and only prograde, zero-revolution transfers</li>
+    <li>The 5-day grid limits the precision of the optimum, and a local optimizer starting from the grid minimum would refine it</li>
+  </ul>
+
+  <h2 class="text-xl font-bold text-white mt-10 mb-3">5. Conclusion</h2>
+  <p class="leading-relaxed text-zinc-400">
+    Using Keplerian propagation and a universal-variable Lambert solver, the heliocentric states of Earth and
+    Didymos were computed and transfers between them evaluated. The reference 400-day transfer costs
+    20.0300 km/s, while a porkchop search finds a transfer of 7.8600 km/s (departure t_ref + 600 d, arrival
+    t_ref + 1000 d). Future work should include longer search windows, multi-revolution solutions, and patched-conic
+    modeling of the planetary departure and arrival phases.
+  </p>
+
+  <h2 class="text-xl font-bold text-white mt-10 mb-3">Appendix A — MATLAB Script</h2>
+  <p class="text-sm text-zinc-500 mb-3">Main driver script for Problem 4. Supporting functions (rv2kep, kep2rv, ta2ma, ma2ta, propagate_elliptical, lambert_universal, stumpff) were submitted separately in the code archive.</p>
+  <pre><code>%% Problem 4: Mission to Didymos
+clear; clc; close all;
+
+%Constants
+AU = 149.6e6;        % km per AU
+MU = 132712000000;   % km^3/s^2
+day2sec = 86400;     % s/day
+eps = 1e-8;          % Stumpff tolerance
+tol = 1e-8;          % Lambert tolerance
+
+%Define
+Earth = [1.00000011*AU; 0.016710212; deg2rad(0.00005);
+         deg2rad(-11.26064); deg2rad(102.94719); deg2rad(100.46435)];
+
+Didymos = [1.6442*AU; 0.38385; deg2rad(3.4079);
+           deg2rad(73.196); deg2rad(319.321); deg2rad(195.0)];
+
+% PART (a): Earth state at t = t_ref + 12 days
+dt_a = 12 * day2sec;
+rv_earth_a = propagate_elliptical(Earth, dt_a, MU);
+r_earth_a = rv_earth_a(1:3);
+v_earth_a = rv_earth_a(4:6);
+
+% PART (b): Didymos state at t = t_ref + 412 days
+dt_b = 412 * day2sec;
+rv_did_b = propagate_elliptical(Didymos, dt_b, MU);
+r_did_b = rv_did_b(1:3);
+v_did_b = rv_did_b(4:6);
+
+%PART (c): Lambert transfer (t0 = +12d, tf = +412d, TOF = 400d)
+tof_c = (412 - 12) * day2sec;
+[v1_c, v2_c, res_c] = lambert_universal(r_earth_a, r_did_b, tof_c, MU, 0, eps, tol);
+dV_earth_c = norm(v1_c - v_earth_a);
+dV_didymos_c = norm(v2_c - v_did_b);
+dV_total_c = dV_earth_c + dV_didymos_c;
+
+% Transfer arc propagation
+rv_sc0 = [r_earth_a; v1_c];
+N_arc = 500;
+t_arc = linspace(0, tof_c, N_arc);
+r_arc_c = zeros(3, N_arc);
+for k = 1:N_arc
+    rv_k = propagate_elliptical(rv_sc0, t_arc(k), MU);
+    r_arc_c(:,k) = rv_k(1:3);
+end
+
+%PART (d): Porkchop plot (t_ref to t_ref+1000 days, skip if tf-t0<=100)
+t_grid = (0:5:1000);
+N_g = length(t_grid);
+DV_mat = NaN(N_g, N_g);
+
+r_e_all = zeros(3, N_g); v_e_all = zeros(3, N_g);
+r_d_all = zeros(3, N_g); v_d_all = zeros(3, N_g);
+for k = 1:N_g
+    rv_e = propagate_elliptical(Earth, t_grid(k)*day2sec, MU);
+    rv_d = propagate_elliptical(Didymos, t_grid(k)*day2sec, MU);
+    r_e_all(:,k) = rv_e(1:3); v_e_all(:,k) = rv_e(4:6);
+    r_d_all(:,k) = rv_d(1:3); v_d_all(:,k) = rv_d(4:6);
+end
+
+for i = 1:N_g
+    for j = i+1 : N_g
+        tof_days = t_grid(j) - t_grid(i);
+        if tof_days <= 100
+            continue
+        end
+        try
+            [v1_ij, v2_ij, ~] = lambert_universal( ...
+                r_e_all(:,i), r_d_all(:,j), tof_days*day2sec, MU, 0, eps, tol);
+            dv = norm(v1_ij - v_e_all(:,i)) + norm(v2_ij - v_d_all(:,j));
+            if isfinite(dv)
+                DV_mat(i,j) = dv;
+            end
+        catch
+            % skip failed solves
+        end
+    end
+end
+
+%Global minimum
+[~, idx] = min(DV_mat(:));
+[ri, ci] = ind2sub(size(DV_mat), idx);
+t0_best = t_grid(ri);
+tf_best = t_grid(ci);
+DV_best = DV_mat(ri,ci);
+fprintf("Global minimum: t0=%g day, tf=%g day, DV=%.4f km/s\n", t0_best, tf_best, DV_best);
+
+% PART (e): Best Transfer
+tof_e = (tf_best - t0_best) * day2sec;
+rv_earth_e = propagate_elliptical(Earth, t0_best*day2sec, MU);
+rv_did_e = propagate_elliptical(Didymos, tf_best*day2sec, MU);
+r_earth_e = rv_earth_e(1:3); v_earth_e = rv_earth_e(4:6);
+r_did_e = rv_did_e(1:3); v_did_e = rv_did_e(4:6);
+
+[v1_e, v2_e, res_e] = lambert_universal(r_earth_e, r_did_e, tof_e, MU, 0, eps, tol);
+dV_e = norm(v1_e - v_earth_e) + norm(v2_e - v_did_e);
+fprintf("Best transfer total DV = %.4f km/s\n", dV_e);</code></pre>
+
+  <a href="index.html#projects" class="inline-block mt-12 font-mono text-sm text-indigo-400 hover:underline">← Back to Projects</a>
+</div>
+
+</body>
+</html>
